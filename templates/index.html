@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Simple Label Tool</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="app">
+        <header class="app__header">
+            <h1>Image Labelling</h1>
+            <p class="app__subtitle">Use the shortcuts to mark issues quickly. Press <kbd>Enter</kbd> to submit or <kbd>S</kbd> to skip.</p>
+            <div id="status" class="status status--hidden"></div>
+        </header>
+        <main class="app__body">
+            <section class="image-panel">
+                <div class="image-panel__frame">
+                    <img id="current-image" alt="Image awaiting labels">
+                </div>
+                <div id="filename" class="image-panel__filename"></div>
+            </section>
+            <section id="categories" class="categories"></section>
+        </main>
+        <footer class="app__footer">
+            <button id="submit-button" class="btn btn--primary">Submit <span class="btn__shortcut">(Enter)</span></button>
+            <button id="skip-button" class="btn">Skip <span class="btn__shortcut">(S)</span></button>
+            <button id="clear-button" class="btn btn--ghost">Clear <span class="btn__shortcut">(C)</span></button>
+        </footer>
+    </div>
+    <template id="category-template">
+        <section class="category">
+            <header class="category__header">
+                <h2 class="category__title"></h2>
+            </header>
+            <div class="category__labels"></div>
+        </section>
+    </template>
+    <template id="label-template">
+        <label class="label">
+            <input type="checkbox">
+            <span class="label__name"></span>
+            <span class="label__shortcut"></span>
+        </label>
+    </template>
+    <script src="/static/app.js"></script>
+</body>
+</html>
