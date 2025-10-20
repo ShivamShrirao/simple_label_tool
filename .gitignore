@@ -10,5 +10,8 @@ env/
 # SQLite database
 data/*.db
 
+# Image assets
+images/
+
 # Logs / local files
 *.log

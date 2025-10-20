@@ -1,3 +1,4 @@
+import atexit
 import json
 import sqlite3
 import threading
@@ -21,6 +22,7 @@ DATA_DIR = BASE_DIR / "data"
 DB_PATH = DATA_DIR / "labels.db"
 
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp"}
+VALID_STATUSES = {"pending", "in_progress", "done"}
 
 app = Flask(
     __name__,
@@ -202,6 +204,75 @@ def finalize_image(image_id, token, labels, skipped):
         conn.close()
 
 
+def release_all_reservations():
+    conn = get_db_connection()
+    try:
+        conn.execute(
+            """
+            UPDATE images
+            SET status = 'pending',
+                reserved_by = NULL,
+                reserved_at = NULL,
+                updated_at = ?
+            WHERE status = 'in_progress'
+            """,
+            (timestamp(),),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def fetch_label_records(status=None, limit=None):
+    query = (
+        "SELECT id, filename, status, labels_json, skipped, reserved_by, "
+        "reserved_at, updated_at FROM images"
+    )
+    clauses = []
+    params = []
+
+    if status and status in VALID_STATUSES:
+        clauses.append("status = ?")
+        params.append(status)
+
+    if clauses:
+        query += " WHERE " + " AND ".join(clauses)
+
+    query += " ORDER BY id"
+
+    if limit is not None and limit > 0:
+        query += " LIMIT ?"
+        params.append(limit)
+
+    conn = get_db_connection()
+    try:
+        rows = conn.execute(query, params).fetchall()
+    finally:
+        conn.close()
+
+    records = []
+    for row in rows:
+        labels_json = row[3]
+        try:
+            labels = json.loads(labels_json) if labels_json else {}
+        except json.JSONDecodeError:
+            labels = labels_json
+        records.append(
+            {
+                "id": row[0],
+                "filename": row[1],
+                "status": row[2],
+                "labels": labels,
+                "skipped": bool(row[4]),
+                "reserved_by": row[5],
+                "reserved_at": row[6],
+                "updated_at": row[7],
+            }
+        )
+
+    return records
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -300,7 +371,36 @@ def handle_unexpected_exception(exc):
     return jsonify({"message": "Internal server error"}), 500
 
 
+@app.route("/api/labels")
+def api_labels_view():
+    status_filter = request.args.get("status")
+    limit = request.args.get("limit", type=int)
+    records = fetch_label_records(status=status_filter, limit=limit)
+    return jsonify({"records": records})
+
+
+@app.route("/labels")
+def labels_view():
+    status_param = request.args.get("status", "all")
+    limit = request.args.get("limit", type=int)
+
+    status_filter = status_param if status_param in VALID_STATUSES else None
+    records = fetch_label_records(status=status_filter, limit=limit)
+    statuses = ["all"] + sorted(VALID_STATUSES)
+
+    return render_template(
+        "labels.html",
+        records=records,
+        statuses=statuses,
+        current_status=status_param if status_param in statuses else "all",
+        limit_value=limit if limit and limit > 0 else "",
+        total_count=len(records),
+    )
+
+
 init_db()
+release_all_reservations()
+atexit.register(release_all_reservations)
 
 
 if __name__ == "__main__":

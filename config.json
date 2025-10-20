@@ -18,11 +18,11 @@
       "id": "realism",
       "name": "Realism",
       "labels": [
-        {"id": "unrealistic", "name": "Unrealistic", "shortcut": "q"},
-        {"id": "fake", "name": "Fake", "shortcut": "w"},
-        {"id": "uncanny", "name": "Uncanny", "shortcut": "e"},
-        {"id": "smooth_texture", "name": "Smooth Texture", "shortcut": "r"},
-        {"id": "plastic_looking", "name": "Plastic Looking", "shortcut": "t"}
+        {"id": "unrealistic", "name": "Unrealistic", "shortcut": "y"},
+        {"id": "fake", "name": "Fake", "shortcut": "u"},
+        {"id": "uncanny", "name": "Uncanny", "shortcut": "i"},
+        {"id": "smooth_texture", "name": "Smooth Texture", "shortcut": "o"},
+        {"id": "plastic_looking", "name": "Plastic Looking", "shortcut": "p"}
       ]
     }
   ]

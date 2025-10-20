@@ -10,23 +10,29 @@
     <div class="app">
         <header class="app__header">
             <h1>Image Labelling</h1>
-            <p class="app__subtitle">Use the shortcuts to mark issues quickly. Press <kbd>Enter</kbd> to submit or <kbd>S</kbd> to skip.</p>
+            <p class="app__subtitle">Use the shortcuts to mark issues quickly. Press <kbd>Enter</kbd> to submit or <kbd>X</kbd> to skip.</p>
             <div id="status" class="status status--hidden"></div>
         </header>
         <main class="app__body">
             <section class="image-panel">
-                <div class="image-panel__frame">
+                <div class="image-panel__frame" id="image-frame">
+                    <div id="image-placeholder" class="image-placeholder"></div>
                     <img id="current-image" alt="Image awaiting labels">
                 </div>
                 <div id="filename" class="image-panel__filename"></div>
             </section>
-            <section id="categories" class="categories"></section>
+            <section class="labels-panel">
+                <header class="labels-panel__header">
+                    <h2>Labels</h2>
+                </header>
+                <div id="categories" class="categories"></div>
+                <div class="labels-panel__actions">
+                    <button id="clear-button" class="btn btn--ghost">Clear <span class="btn__shortcut">(C)</span></button>
+                    <button id="skip-button" class="btn">Skip <span class="btn__shortcut">(X)</span></button>
+                    <button id="submit-button" class="btn btn--primary">Submit <span class="btn__shortcut">(Enter)</span></button>
+                </div>
+            </section>
         </main>
-        <footer class="app__footer">
-            <button id="submit-button" class="btn btn--primary">Submit <span class="btn__shortcut">(Enter)</span></button>
-            <button id="skip-button" class="btn">Skip <span class="btn__shortcut">(S)</span></button>
-            <button id="clear-button" class="btn btn--ghost">Clear <span class="btn__shortcut">(C)</span></button>
-        </footer>
     </div>
     <template id="category-template">
         <section class="category">

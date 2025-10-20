@@ -9,11 +9,14 @@
     const FALLBACK_SHORTCUTS = [
         "1", "2", "3", "4", "5", "6", "7", "8", "9", "0",
         "q", "w", "e", "r", "t", "y", "u", "i", "o", "p",
-        "a", "s", "d", "f", "g", "h", "j", "k", "l",
-        "z", "x", "c", "v", "b", "n", "m",
+        "a", "d", "f", "g", "h", "j", "k", "l",
+        "z", "x", "v", "b", "n", "m",
     ];
+    const RESERVED_SHORTCUTS = new Set(["x", "c"]);
 
     const statusEl = document.getElementById("status");
+    const imageFrameEl = document.getElementById("image-frame");
+    const imagePlaceholderEl = document.getElementById("image-placeholder");
     const imageEl = document.getElementById("current-image");
     const filenameEl = document.getElementById("filename");
     const categoriesContainer = document.getElementById("categories");
@@ -22,6 +25,17 @@
     const clearButton = document.getElementById("clear-button");
     const categoryTemplate = document.getElementById("category-template");
     const labelTemplate = document.getElementById("label-template");
+
+    const NON_EDITABLE_INPUT_TYPES = new Set([
+        "button",
+        "checkbox",
+        "color",
+        "file",
+        "radio",
+        "range",
+        "reset",
+        "submit",
+    ]);
 
     async function init() {
         try {
@@ -63,17 +77,23 @@
             category.labels.forEach((label) => {
                 if (label.shortcut) {
                     const normalized = String(label.shortcut).trim().toLowerCase();
-                    if (normalized && !used.has(normalized)) {
-                        label._shortcut = normalized;
-                        used.add(normalized);
-                        return;
+                    if (normalized) {
+                        if (RESERVED_SHORTCUTS.has(normalized)) {
+                            console.warn(`Shortcut "${label.shortcut}" is reserved. It will be reassigned automatically.`);
+                        } else if (!used.has(normalized)) {
+                            label._shortcut = normalized;
+                            used.add(normalized);
+                            return;
+                        }
                     }
                 }
                 label._shortcut = null;
             });
         });
 
-        const available = FALLBACK_SHORTCUTS.filter((key) => !used.has(key));
+        const available = FALLBACK_SHORTCUTS.filter(
+            (key) => !used.has(key) && !RESERVED_SHORTCUTS.has(key)
+        );
 
         categories.forEach((category) => {
             category.labels.forEach((label) => {
@@ -112,9 +132,10 @@
                 nameEl.textContent = label.name;
 
                 if (label._shortcut) {
-                    const key = label._shortcut.toLowerCase();
-                    shortcutEl.textContent = key.length === 1 ? key.toUpperCase() : key;
-                    registerShortcut(key, checkbox, labelNode);
+                    const shortcutKey = label._shortcut;
+                    const display = shortcutKey.length === 1 ? shortcutKey.toUpperCase() : shortcutKey;
+                    shortcutEl.textContent = display;
+                    registerShortcut(shortcutKey, checkbox, labelNode);
                 } else {
                     shortcutEl.textContent = "";
                     shortcutEl.classList.add("label__shortcut--hidden");
@@ -132,11 +153,105 @@
     }
 
     function registerShortcut(shortcut, checkbox, labelNode) {
-        const key = shortcut.toLowerCase();
-        if (!state.shortcutMap.has(key)) {
-            state.shortcutMap.set(key, []);
+        if (!shortcut) {
+            return;
         }
-        state.shortcutMap.get(key).push({ checkbox, labelNode });
+        const normalized = shortcut.toLowerCase();
+        const identifiers = new Set([normalized]);
+
+        if (normalized.length === 1) {
+            if (/[a-z]/.test(normalized)) {
+                identifiers.add(`key${normalized}`);
+            }
+            if (/[0-9]/.test(normalized)) {
+                identifiers.add(`digit${normalized}`);
+            }
+        }
+
+        identifiers.forEach((identifier) => {
+            if (!state.shortcutMap.has(identifier)) {
+                state.shortcutMap.set(identifier, []);
+            }
+            state.shortcutMap.get(identifier).push({ checkbox, labelNode });
+        });
+    }
+
+    function isEditableTarget(element) {
+        if (!element) {
+            return false;
+        }
+        if (element.closest("[contenteditable='true']")) {
+            return true;
+        }
+        const tag = element.tagName;
+        if (tag === "TEXTAREA") {
+            return true;
+        }
+        if (tag === "INPUT") {
+            const type = (element.getAttribute("type") || "text").toLowerCase();
+            return !NON_EDITABLE_INPUT_TYPES.has(type);
+        }
+        return false;
+    }
+
+    function setActionButtonsDisabled(disabled) {
+        submitButton.disabled = disabled;
+        skipButton.disabled = disabled;
+        clearButton.disabled = disabled;
+    }
+
+    function setImagePlaceholder(message) {
+        imageFrameEl.classList.add("image-panel__frame--empty");
+        imagePlaceholderEl.textContent = message;
+        imageEl.src = "";
+        imageEl.alt = message || "";
+        filenameEl.textContent = "";
+        state.currentImage = null;
+        state.reservationToken = null;
+    }
+
+    function showImage(image) {
+        if (!image) {
+            setImagePlaceholder("No image available.");
+            return;
+        }
+        imageFrameEl.classList.remove("image-panel__frame--empty");
+        imagePlaceholderEl.textContent = "";
+        imageEl.src = `${image.url}?t=${Date.now()}`;
+        imageEl.alt = `Image ${image.filename}`;
+        filenameEl.textContent = image.filename;
+    }
+
+    function stashCurrentImageState() {
+        return {
+            src: imageEl.getAttribute("src"),
+            alt: imageEl.getAttribute("alt"),
+            filename: filenameEl.textContent,
+            frameEmpty: imageFrameEl.classList.contains("image-panel__frame--empty"),
+            placeholder: imagePlaceholderEl.textContent,
+            image: state.currentImage,
+            reservationToken: state.reservationToken,
+        };
+    }
+
+    function restoreImageState(snapshot) {
+        if (!snapshot) {
+            return;
+        }
+        if (snapshot.frameEmpty) {
+            imageFrameEl.classList.add("image-panel__frame--empty");
+            imagePlaceholderEl.textContent = snapshot.placeholder || "";
+            imageEl.src = "";
+            imageEl.alt = snapshot.alt || "";
+        } else {
+            imageFrameEl.classList.remove("image-panel__frame--empty");
+            imagePlaceholderEl.textContent = "";
+            imageEl.src = snapshot.src || "";
+            imageEl.alt = snapshot.alt || "";
+        }
+        filenameEl.textContent = snapshot.filename || "";
+        state.currentImage = snapshot.image || null;
+        state.reservationToken = snapshot.reservationToken || null;
     }
 
     function attachEventListeners() {
@@ -154,48 +269,56 @@
 
         document.addEventListener("keydown", async (event) => {
             const activeElement = document.activeElement;
-            const tag = activeElement ? activeElement.tagName : "";
-
-            if (tag === "INPUT" || tag === "TEXTAREA") {
+            if (isEditableTarget(activeElement)) {
                 return;
             }
 
-            const key = event.key.toLowerCase();
+            const rawKey = event.key || "";
+            const key = rawKey.toLowerCase();
+            const code = (event.code || "").toLowerCase();
 
-            if (event.key === "Enter") {
+            if (key === "enter") {
                 event.preventDefault();
                 await submitLabels();
                 return;
             }
 
-            if (key === "s") {
+            if (key === "x" || code === "keyx") {
                 event.preventDefault();
                 await skipImage();
                 return;
             }
 
-            if (key === "c") {
+            if (key === "c" || code === "keyc") {
                 event.preventDefault();
                 clearSelections();
                 return;
             }
 
-            if (state.shortcutMap.has(key)) {
+            if (toggleShortcut(key)) {
                 event.preventDefault();
-                toggleShortcut(key);
+                return;
+            }
+
+            if (code && toggleShortcut(code)) {
+                event.preventDefault();
             }
         });
     }
 
-    function toggleShortcut(key) {
-        const entries = state.shortcutMap.get(key);
+    function toggleShortcut(identifier) {
+        if (!state.currentImage) {
+            return false;
+        }
+        const entries = state.shortcutMap.get(identifier);
         if (!entries) {
-            return;
+            return false;
         }
         entries.forEach(({ checkbox, labelNode }) => {
             checkbox.checked = !checkbox.checked;
             labelNode.classList.toggle("label--active", checkbox.checked);
         });
+        return true;
     }
 
     function clearSelections() {
@@ -211,6 +334,8 @@
     }
 
     async function fetchNextImage() {
+        setActionButtonsDisabled(true);
+        setImagePlaceholder("Loading next image…");
         showStatus("Fetching next image…", "info");
         const response = await fetch("/api/image");
         if (!response.ok) {
@@ -221,28 +346,19 @@
         if (payload.status === "empty") {
             state.currentImage = null;
             state.reservationToken = null;
-            imageEl.src = "";
-            imageEl.alt = "No more images to label.";
-            filenameEl.textContent = "";
+            setImagePlaceholder("All images are labelled. 🎉");
             showStatus("All images are labelled. 🎉", "success");
-            submitButton.disabled = true;
-            skipButton.disabled = true;
+            setActionButtonsDisabled(true);
             return;
         }
-
-        submitButton.disabled = false;
-        skipButton.disabled = false;
 
         const { image, reservation_token: reservationToken } = payload;
         state.currentImage = image;
         state.reservationToken = reservationToken;
         clearSelections();
 
-        if (image && image.url) {
-            imageEl.src = `${image.url}?t=${Date.now()}`;
-            imageEl.alt = `Image ${image.filename}`;
-            filenameEl.textContent = image.filename;
-        }
+        showImage(image);
+        setActionButtonsDisabled(false);
 
         showStatus("Image reserved. Apply labels and submit.", "info");
     }
@@ -252,6 +368,8 @@
             showStatus("No image reserved. Refresh to continue.", "error");
             return;
         }
+
+        setActionButtonsDisabled(true);
 
         const labelsPayload = {};
         let totalSelected = 0;
@@ -271,15 +389,22 @@
 
         if (totalSelected === 0) {
             showStatus("Select at least one label or press Skip.", "error");
+            setActionButtonsDisabled(false);
             return;
         }
+
+        const snapshot = stashCurrentImageState();
+        const imageId = state.currentImage.id;
+        const reservationToken = state.reservationToken;
+        setImagePlaceholder("Saving labels…");
+        showStatus("Saving labels…", "info");
 
         const response = await fetch("/api/label", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                image_id: state.currentImage.id,
-                reservation_token: state.reservationToken,
+                image_id: imageId,
+                reservation_token: reservationToken,
                 labels: labelsPayload,
             }),
         });
@@ -292,6 +417,8 @@
 
         const errorText = await response.text();
         showStatus(parseErrorMessage(errorText), "error");
+        restoreImageState(snapshot);
+        setActionButtonsDisabled(false);
         if (response.status === 409) {
             await fetchNextImage();
         }
@@ -303,16 +430,24 @@
             return;
         }
 
+        const snapshot = stashCurrentImageState();
+        const imageId = state.currentImage.id;
+        const reservationToken = state.reservationToken;
+        setActionButtonsDisabled(true);
+        setImagePlaceholder("Skipping image…");
+        showStatus("Skipping image…", "info");
+
         const response = await fetch("/api/skip", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                image_id: state.currentImage.id,
-                reservation_token: state.reservationToken,
+                image_id: imageId,
+                reservation_token: reservationToken,
             }),
         });
 
         if (response.ok) {
+            clearSelections();
             showStatus("Image skipped.", "info");
             await fetchNextImage();
             return;
@@ -322,7 +457,10 @@
         showStatus(parseErrorMessage(errorText), "error");
         if (response.status === 409) {
             await fetchNextImage();
+            return;
         }
+        restoreImageState(snapshot);
+        setActionButtonsDisabled(false);
     }
 
     function showStatus(message, type = "info") {

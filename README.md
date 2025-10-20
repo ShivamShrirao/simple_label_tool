@@ -47,6 +47,8 @@ You can inspect the database with any SQLite tool, for example:
 sqlite3 data/labels.db "SELECT filename, labels_json, skipped FROM images WHERE status='done';"
 ```
 
+For a browser-based view, open `http://<host>:5000/labels`. Use the controls at the top of the page to filter by status or limit the number of rows displayed; all records are rendered in a sortable-friendly table for easy scanning.
+
 ## Customising Categories & Shortcuts
 Edit `config.json` to change the taxonomy. Example structure:
 ```json
