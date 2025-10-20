@@ -273,6 +273,19 @@ def fetch_label_records(status=None, limit=None):
     return records
 
 
+def get_progress_counts():
+    conn = get_db_connection()
+    try:
+        total = conn.execute("SELECT COUNT(*) FROM images").fetchone()[0]
+        done = conn.execute(
+            "SELECT COUNT(*) FROM images WHERE status = 'done'"
+        ).fetchone()[0]
+    finally:
+        conn.close()
+
+    return {"done": done, "total": total}
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -285,6 +298,7 @@ def get_config():
         {
             "categories": config.get("categories", []),
             "image_directory": str(get_image_directory()),
+            "progress": get_progress_counts(),
         }
     )
 
@@ -377,6 +391,11 @@ def api_labels_view():
     limit = request.args.get("limit", type=int)
     records = fetch_label_records(status=status_filter, limit=limit)
     return jsonify({"records": records})
+
+
+@app.route("/api/progress")
+def api_progress():
+    return jsonify(get_progress_counts())
 
 
 @app.route("/labels")

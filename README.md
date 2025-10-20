@@ -4,9 +4,10 @@ Keyboard-first web interface for labelling images across multiple categories wit
 
 ## Features
 - Multiple categories with multi-select labels; easy to add or remove in `config.json`.
-- Keyboard shortcuts for every label plus submit (`Enter`), skip (`S`), and clear selections (`C`).
+- Keyboard shortcuts for every label plus submit (`Z`), skip (`X`), and clear selections (`C`).
 - Shared reservation queue backed by SQLite so an image is only shown to one person at a time.
 - Built-in skip support; skipped images remain recorded with an empty label set.
+- Live progress bar showing how many images are complete out of the total queue.
 
 ## Prerequisites
 - Python 3.9 or newer
@@ -30,8 +31,8 @@ The app listens on `http://0.0.0.0:5000`, so you can share that URL (or the mach
 
 ## Using the Labelling UI
 - Shortcuts are shown next to each label; press a shortcut to toggle it.
-- `Enter` submits the current selections.
-- `S` skips the image without applying any labels.
+- `Z` submits the current selections.
+- `X` skips the image without applying any labels.
 - `C` clears all selections for the current image.
 - The status banner at the top reports reservation and submission results. When all images are complete, the UI confirms that the queue is empty.
 
@@ -39,7 +40,7 @@ The app listens on `http://0.0.0.0:5000`, so you can share that URL (or the mach
 Label selections are stored in `data/labels.db` in the `images` table. Each row contains:
 - `filename`: original image filename
 - `status`: `pending`, `in_progress`, or `done`
-- `labels_json`: JSON object mapping category IDs to arrays of label IDs; empty object for skipped images
+- `labels_json`: JSON object mapping category IDs to arrays of the selected label phrases; empty object for skipped images
 - `skipped`: `1` if the image was skipped, otherwise `0`
 
 You can inspect the database with any SQLite tool, for example:
@@ -60,7 +61,7 @@ Edit `config.json` to change the taxonomy. Example structure:
       "id": "hands",
       "name": "Hands",
       "labels": [
-        {"id": "disfigured", "name": "Disfigured", "shortcut": "1"}
+        {"name": "disfigured hand", "shortcut": "1"}
       ]
     }
   ]

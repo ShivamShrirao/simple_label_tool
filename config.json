@@ -6,23 +6,21 @@
       "id": "hands",
       "name": "Hands",
       "labels": [
-        {"id": "disfigured", "name": "Disfigured", "shortcut": "1"},
-        {"id": "extra_fingers", "name": "Extra Fingers", "shortcut": "2"},
-        {"id": "missing_fingers", "name": "Missing Fingers", "shortcut": "3"},
-        {"id": "deformed", "name": "Deformed", "shortcut": "4"},
-        {"id": "mangled", "name": "Mangled", "shortcut": "5"},
-        {"id": "extra_hand", "name": "Extra Hand", "shortcut": "6"}
+        {"name": "disfigured hand", "shortcut": "1"},
+        {"name": "extra fingers", "shortcut": "2"},
+        {"name": "missing fingers", "shortcut": "3"},
+        {"name": "deformed fingers", "shortcut": "4"},
+        {"name": "extra hand", "shortcut": "6"}
       ]
     },
     {
       "id": "realism",
       "name": "Realism",
       "labels": [
-        {"id": "unrealistic", "name": "Unrealistic", "shortcut": "y"},
-        {"id": "fake", "name": "Fake", "shortcut": "u"},
-        {"id": "uncanny", "name": "Uncanny", "shortcut": "i"},
-        {"id": "smooth_texture", "name": "Smooth Texture", "shortcut": "o"},
-        {"id": "plastic_looking", "name": "Plastic Looking", "shortcut": "p"}
+        {"name": "unrealistic, fake", "shortcut": "y"},
+        {"name": "uncanny", "shortcut": "u"},
+        {"name": "smooth texture", "shortcut": "i"},
+        {"name": "plastic looking", "shortcut": "o"}
       ]
     }
   ]

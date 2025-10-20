@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Label Records</title>
+    <link rel="stylesheet" href="/static/labels.css">
+</head>
+<body class="labels-page">
+    <header class="labels-header">
+        <h1>Label Records</h1>
+        <nav class="labels-nav">
+            <a href="/" class="nav-link">↩ Back to Labelling</a>
+        </nav>
+    </header>
+
+    <section class="filters">
+        <form method="get" class="filters__form">
+            <label class="filters__field">
+                <span>Status</span>
+                <select name="status">
+                    {% for status in statuses %}
+                        <option value="{{ status }}"
+                            {% if status == current_status %}selected{% endif %}>
+                            {{ status|replace('_', ' ')|title }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label class="filters__field">
+                <span>Limit</span>
+                <input type="number" name="limit" min="1" placeholder="All" value="{{ limit_value }}">
+            </label>
+            <div class="filters__actions">
+                <button type="submit" class="btn btn--primary">Apply</button>
+                <a href="/labels" class="btn btn--ghost">Reset</a>
+            </div>
+        </form>
+        <div class="filters__summary">
+            Showing {{ total_count }} record{{ 's' if total_count != 1 else '' }}.
+        </div>
+    </section>
+
+    <section class="records">
+        {% if records %}
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Filename</th>
+                            <th>Status</th>
+                            <th>Labels</th>
+                            <th>Skipped</th>
+                            <th>Reserved By</th>
+                            <th>Reserved At</th>
+                            <th>Updated At</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in records %}
+                            <tr>
+                                <td>{{ record.id }}</td>
+                                <td class="cell-filename">{{ record.filename }}</td>
+                                <td>
+                                    <span class="status-tag status-tag--{{ record.status }}">
+                                        {{ record.status|replace('_', ' ')|title }}
+                                    </span>
+                                </td>
+                                <td class="cell-labels">
+                                    {% if record.labels %}
+                                        <code class="labels-json">{{ record.labels | tojson }}</code>
+                                    {% else %}
+                                        <span class="labels-empty">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ 'Yes' if record.skipped else 'No' }}</td>
+                                <td>{{ record.reserved_by or '—' }}</td>
+                                <td>{{ record.reserved_at or '—' }}</td>
+                                <td>{{ record.updated_at or '—' }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <p>No records match the current filters.</p>
+            </div>
+        {% endif %}
+    </section>
+</body>
+</html>

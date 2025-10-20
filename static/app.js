@@ -4,17 +4,22 @@
         shortcutMap: new Map(),
         currentImage: null,
         reservationToken: null,
+        progress: { done: 0, total: 0 },
     };
 
     const FALLBACK_SHORTCUTS = [
         "1", "2", "3", "4", "5", "6", "7", "8", "9", "0",
         "q", "w", "e", "r", "t", "y", "u", "i", "o", "p",
-        "a", "d", "f", "g", "h", "j", "k", "l",
-        "z", "x", "v", "b", "n", "m",
+        "a", "d", "g", "h", "j", "k", "l",
+        "x", "v", "b", "n", "m",
     ];
-    const RESERVED_SHORTCUTS = new Set(["x", "c"]);
+    const RESERVED_SHORTCUTS = new Set(["x", "c", "f"]);
 
     const statusEl = document.getElementById("status");
+    const progressContainer = document.getElementById("progress");
+    const progressBarEl = document.getElementById("progress-bar");
+    const progressTextEl = document.getElementById("progress-text");
+    const progressEnabled = Boolean(progressContainer && progressBarEl && progressTextEl);
     const imageFrameEl = document.getElementById("image-frame");
     const imagePlaceholderEl = document.getElementById("image-placeholder");
     const imageEl = document.getElementById("current-image");
@@ -61,13 +66,29 @@
             name: category.name || category.id || "Category",
             labels: Array.isArray(category.labels)
                 ? category.labels.map((label, index) => ({
-                      id: label.id || `${category.id}_${index}`,
+                      key: createLabelKey(category.id, label, index),
                       name: label.name || label.id || "Label",
                       shortcut: label.shortcut || null,
                   }))
                 : [],
         }));
         assignShortcuts(state.categories);
+
+        applyProgress(data.progress);
+    }
+
+    function createLabelKey(categoryId, label, index) {
+        const base = label && (label.id || label.name);
+        if (typeof base === "string" && base.trim()) {
+            const slug = base
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, "-")
+                .replace(/^-+|-+$/g, "");
+            if (slug) {
+                return slug;
+            }
+        }
+        return `${categoryId}_${index}`;
     }
 
     function assignShortcuts(categories) {
@@ -124,10 +145,11 @@
                 const nameEl = labelNode.querySelector(".label__name");
                 const shortcutEl = labelNode.querySelector(".label__shortcut");
 
-                const checkboxId = `${category.id}__${label.id}`;
+                const checkboxId = `${category.id}__${label.key}`;
                 checkbox.id = checkboxId;
                 checkbox.dataset.categoryId = category.id;
-                checkbox.dataset.labelId = label.id;
+                checkbox.dataset.labelValue = label.name;
+                checkbox.dataset.labelKey = label.key;
 
                 nameEl.textContent = label.name;
 
@@ -198,6 +220,34 @@
         submitButton.disabled = disabled;
         skipButton.disabled = disabled;
         clearButton.disabled = disabled;
+    }
+
+    function applyProgress(progress) {
+        const done = Number(progress && progress.done) || 0;
+        const total = Number(progress && progress.total) || 0;
+        state.progress = { done, total };
+
+        if (!progressEnabled) {
+            return;
+        }
+
+        const percent = total > 0 ? Math.min(100, (done / total) * 100) : 0;
+        progressBarEl.style.width = `${percent}%`;
+        progressContainer.classList.toggle("progress--empty", total === 0);
+        progressTextEl.textContent = `${done} / ${total}`;
+    }
+
+    async function refreshProgress() {
+        try {
+            const response = await fetch("/api/progress");
+            if (!response.ok) {
+                return;
+            }
+            const data = await response.json();
+            applyProgress(data);
+        } catch (error) {
+            console.error("Failed to refresh progress", error);
+        }
     }
 
     function setImagePlaceholder(message) {
@@ -277,7 +327,7 @@
             const key = rawKey.toLowerCase();
             const code = (event.code || "").toLowerCase();
 
-            if (key === "enter") {
+            if (key === "f" || code === "keyf") {
                 event.preventDefault();
                 await submitLabels();
                 return;
@@ -349,6 +399,7 @@
             setImagePlaceholder("All images are labelled. 🎉");
             showStatus("All images are labelled. 🎉", "success");
             setActionButtonsDisabled(true);
+            await refreshProgress();
             return;
         }
 
@@ -361,6 +412,7 @@
         setActionButtonsDisabled(false);
 
         showStatus("Image reserved. Apply labels and submit.", "info");
+        await refreshProgress();
     }
 
     async function submitLabels() {
@@ -379,7 +431,7 @@
                 categoriesContainer.querySelectorAll(
                     `input[data-category-id="${category.id}"]:checked`
                 )
-            ).map((input) => input.dataset.labelId);
+            ).map((input) => input.dataset.labelValue);
 
             if (selected.length) {
                 labelsPayload[category.id] = selected;

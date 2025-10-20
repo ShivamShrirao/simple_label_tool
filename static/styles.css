@@ -38,6 +38,38 @@ body {
     color: #94a3b8;
 }
 
+.progress {
+    position: relative;
+    background-color: rgba(148, 163, 184, 0.25);
+    border-radius: 999px;
+    height: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    width: 100%;
+}
+
+.progress__bar {
+    height: 100%;
+    background: linear-gradient(90deg, rgba(56, 189, 248, 0.65), rgba(59, 130, 246, 0.85));
+    transition: width 0.25s ease;
+    width: 0;
+}
+
+.progress__text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.progress--empty .progress__text {
+    color: #94a3b8;
+}
+
 .status {
     padding: 0.5rem 0.75rem;
     border-radius: 0.5rem;
@@ -147,6 +179,12 @@ body {
 .labels-panel__header h2 {
     margin: 0;
     font-size: 1.4rem;
+}
+
+.labels-panel__shortcuts {
+    margin: 0;
+    color: #94a3b8;
+    font-size: 0.9rem;
 }
 
 .labels-panel__actions {
