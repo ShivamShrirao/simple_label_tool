@@ -50,6 +50,12 @@ sqlite3 data/labels.db "SELECT filename, labels_json, skipped FROM images WHERE 
 
 For a browser-based view, open `http://<host>:5000/labels`. Use the controls at the top of the page to filter by status or limit the number of rows displayed; all records are rendered in a sortable-friendly table for easy scanning.
 
+Need to migrate existing annotations after renaming a label? Use:
+```bash
+python scripts/update_blurry_labels.py
+```
+This rewrites every stored instance of `"blurry image"` to `"pixelated, low res"` in the SQLite database.
+
 ## Customising Categories & Shortcuts
 Edit `config.json` to change the taxonomy. Example structure:
 ```json

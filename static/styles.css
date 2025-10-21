@@ -17,7 +17,7 @@ body {
 .app {
     display: flex;
     flex-direction: column;
-    width: min(1200px, 100%);
+    width: min(1500px, 94vw);
     padding: 1.5rem;
     gap: 1.5rem;
 }
@@ -97,8 +97,8 @@ body {
 
 .app__body {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
-    gap: 2rem;
+    grid-template-columns: minmax(0, 1.15fr) minmax(240px, 320px);
+    gap: 2.25rem;
     align-items: start;
 }
 
@@ -114,12 +114,12 @@ body {
     position: relative;
     background-color: #0f172a;
     border-radius: 1rem;
-    padding: 1.5rem;
+    padding: 1.75rem;
     display: flex;
     align-items: center;
     justify-content: center;
     width: 100%;
-    height: min(75vh, 860px);
+    height: min(80vh, 1000px);
 }
 
 .image-panel__frame img {

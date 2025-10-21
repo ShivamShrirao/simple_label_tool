@@ -7,9 +7,6 @@ __pycache__/
 venv/
 env/
 
-# SQLite database
-data/*.db
-
 # Image assets
 images/
 

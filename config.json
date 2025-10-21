@@ -17,10 +17,11 @@
       "id": "realism",
       "name": "Realism",
       "labels": [
-        {"name": "unrealistic, fake", "shortcut": "y"},
-        {"name": "uncanny", "shortcut": "u"},
-        {"name": "smooth texture", "shortcut": "i"},
-        {"name": "plastic looking", "shortcut": "o"}
+        {"name": "unrealistic, uncanny", "shortcut": "y"},
+        {"name": "smooth texture", "shortcut": "u"},
+        {"name": "plastic looking", "shortcut": "i"},
+        {"name": "pixelated, low res", "shortcut": "o"},
+        {"name": "noisy", "shortcut": "p"}
       ]
     }
   ]
