@@ -9,11 +9,11 @@
 
     const FALLBACK_SHORTCUTS = [
         "1", "2", "3", "4", "5", "6", "7", "8", "9", "0",
-        "q", "w", "e", "r", "t", "y", "u", "i", "o", "p",
+        "w", "e", "r", "t", "y", "u", "i", "o", "p",
         "a", "d", "g", "h", "j", "k", "l",
-        "x", "v", "b", "n", "m",
+        "v", "b", "n", "m",
     ];
-    const RESERVED_SHORTCUTS = new Set(["x", "c", "f"]);
+    const RESERVED_SHORTCUTS = new Set(["q", "c", "f"]);
 
     const statusEl = document.getElementById("status");
     const progressContainer = document.getElementById("progress");
@@ -333,7 +333,7 @@
                 return;
             }
 
-            if (key === "x" || code === "keyx") {
+            if (key === "q" || code === "keyq") {
                 event.preventDefault();
                 await skipImage();
                 return;
