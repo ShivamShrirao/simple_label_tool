@@ -5,6 +5,10 @@
         currentImage: null,
         reservationToken: null,
         progress: { done: 0, total: 0 },
+        currentObjectUrl: null,
+        prefetch: null,
+        fetchNextPromise: null,
+        noMoreImages: false,
     };
 
     const FALLBACK_SHORTCUTS = [
@@ -48,6 +52,7 @@
             renderCategories();
             attachEventListeners();
             await fetchNextImage();
+            prefetchNextImage();
         } catch (error) {
             console.error(error);
             showStatus("Failed to initialise: " + error.message, "error");
@@ -250,6 +255,13 @@
         }
     }
 
+    function cleanupCurrentObjectUrl() {
+        if (state.currentObjectUrl) {
+            URL.revokeObjectURL(state.currentObjectUrl);
+            state.currentObjectUrl = null;
+        }
+    }
+
     function setImagePlaceholder(message) {
         imageFrameEl.classList.add("image-panel__frame--empty");
         imagePlaceholderEl.textContent = message;
@@ -260,14 +272,14 @@
         state.reservationToken = null;
     }
 
-    function showImage(image) {
+    function showImage(image, objectUrl) {
         if (!image) {
             setImagePlaceholder("No image available.");
             return;
         }
         imageFrameEl.classList.remove("image-panel__frame--empty");
         imagePlaceholderEl.textContent = "";
-        imageEl.src = `${image.url}?t=${Date.now()}`;
+        imageEl.src = objectUrl || `${image.url}?t=${Date.now()}`;
         imageEl.alt = `Image ${image.filename}`;
         filenameEl.textContent = image.filename;
     }
@@ -281,6 +293,7 @@
             placeholder: imagePlaceholderEl.textContent,
             image: state.currentImage,
             reservationToken: state.reservationToken,
+            objectUrl: state.currentObjectUrl,
         };
     }
 
@@ -302,6 +315,7 @@
         filenameEl.textContent = snapshot.filename || "";
         state.currentImage = snapshot.image || null;
         state.reservationToken = snapshot.reservationToken || null;
+        state.currentObjectUrl = snapshot.objectUrl || null;
     }
 
     function attachEventListeners() {
@@ -384,35 +398,64 @@
     }
 
     async function fetchNextImage() {
-        setActionButtonsDisabled(true);
-        setImagePlaceholder("Loading next image…");
-        showStatus("Fetching next image…", "info");
-        const response = await fetch("/api/image");
-        if (!response.ok) {
-            showStatus("Failed to fetch image from server.", "error");
-            return;
+        if (state.fetchNextPromise) {
+            return state.fetchNextPromise;
         }
-        const payload = await response.json();
-        if (payload.status === "empty") {
-            state.currentImage = null;
-            state.reservationToken = null;
-            setImagePlaceholder("All images are labelled. 🎉");
-            showStatus("All images are labelled. 🎉", "success");
+
+        const shouldShowLoading = !state.prefetch;
+        if (shouldShowLoading) {
             setActionButtonsDisabled(true);
-            await refreshProgress();
-            return;
+            setImagePlaceholder("Loading next image…");
+            showStatus("Fetching next image…", "info");
         }
 
-        const { image, reservation_token: reservationToken } = payload;
-        state.currentImage = image;
-        state.reservationToken = reservationToken;
-        clearSelections();
+        const nextPromise = (async () => {
+            let result;
+            try {
+                result = await consumePrefetch();
+            } catch (error) {
+                console.error("Failed to fetch next image", error);
+                showStatus("Failed to fetch image from server.", "error");
+                setActionButtonsDisabled(false);
+                return;
+            }
 
-        showImage(image);
-        setActionButtonsDisabled(false);
+            if (!result || result.status === "empty") {
+                cleanupCurrentObjectUrl();
+                state.currentImage = null;
+                state.reservationToken = null;
+                setImagePlaceholder("All images are labelled. 🎉");
+                showStatus("All images are labelled. 🎉", "success");
+                setActionButtonsDisabled(true);
+                await refreshProgress();
+                return;
+            }
 
-        showStatus("Image reserved. Apply labels and submit.", "info");
-        await refreshProgress();
+            const { image, reservationToken, objectUrl } = result;
+            cleanupCurrentObjectUrl();
+            state.currentImage = image;
+            state.reservationToken = reservationToken;
+            state.currentObjectUrl = objectUrl || null;
+            clearSelections();
+
+            showImage(image, objectUrl);
+            setActionButtonsDisabled(false);
+
+            showStatus("Image reserved. Apply labels and submit.", "info");
+            await refreshProgress();
+
+            prefetchNextImage();
+        })();
+
+        state.fetchNextPromise = nextPromise
+            .catch(() => {
+                // Errors are handled above; avoid unhandled rejection noise.
+            })
+            .finally(() => {
+                state.fetchNextPromise = null;
+            });
+
+        return nextPromise;
     }
 
     async function submitLabels() {
@@ -513,6 +556,82 @@
         }
         restoreImageState(snapshot);
         setActionButtonsDisabled(false);
+    }
+
+    async function reserveAndPreloadImage() {
+        const response = await fetch("/api/image");
+        if (!response.ok) {
+            throw new Error("Failed to reserve next image from server.");
+        }
+        const payload = await response.json();
+        if (payload.status === "empty") {
+            return { status: "empty" };
+        }
+
+        const { image, reservation_token: reservationToken } = payload;
+        const imageUrl = `${image.url}?t=${Date.now()}`;
+        const imageResponse = await fetch(imageUrl);
+        if (!imageResponse.ok) {
+            throw new Error("Failed to preload image data.");
+        }
+        const blob = await imageResponse.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        return {
+            status: "ok",
+            image,
+            reservationToken,
+            objectUrl,
+        };
+    }
+
+    async function consumePrefetch() {
+        let result = null;
+        if (state.prefetch) {
+            const holder = state.prefetch;
+            state.prefetch = null;
+            try {
+                result = await holder.promise;
+            } catch (error) {
+                console.error("Prefetched image unavailable", error);
+            }
+        }
+
+        if (!result && !state.noMoreImages) {
+            result = await reserveAndPreloadImage();
+        }
+
+        if (result && result.status === "empty") {
+            state.noMoreImages = true;
+        }
+
+        return result;
+    }
+
+    function prefetchNextImage() {
+        if (state.noMoreImages || state.prefetch) {
+            return;
+        }
+
+        const holder = {};
+        holder.promise = reserveAndPreloadImage()
+            .then((result) => {
+                if (result && result.status === "empty") {
+                    state.noMoreImages = true;
+                }
+                return result;
+            })
+            .catch((error) => {
+                console.error("Failed to preload next image", error);
+                throw error;
+            });
+
+        holder.promise.catch(() => {
+            if (state.prefetch === holder) {
+                state.prefetch = null;
+            }
+        });
+
+        state.prefetch = holder;
     }
 
     function showStatus(message, type = "info") {
